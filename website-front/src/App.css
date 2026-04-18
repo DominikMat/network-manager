@@ -9,27 +9,55 @@ html {
 }
 
 /* Put text components in corners, fixed positions */
-#app-title {
+#credits {
     position: fixed;
-    top: 2vh;
-    right: 2vw;
+    top: 1rem;
+    left: 1rem;
+    background-color: transparent;
+    text-align: left;
+    color: rgba(0, 0, 0, 0.5);
+}
+#app-title {
     background-color: transparent;
     text-align: left;
     font-weight: 700;
     letter-spacing: 0.1ch;
     color:rgba(0, 0, 0, 0.5);
 }
-#credits {
-    position: fixed;
-    bottom: 2vh;
-    left: 2vw;
-    background-color: transparent;
-    text-align: left;
-    color: rgba(0, 0, 0, 0.5);
-}
 #credits p {
     margin: 0;
     font-size: small;
+}
+
+/* =============================================================================== */
+/* CONSOLE STYLING */
+/* =============================================================================== */
+
+.console {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    width: 35vw;
+    height: 20vh;
+
+    border-radius: 30px;
+    border-left: 2px solid black;
+    border-bottom: 2px solid black;
+    background: linear-gradient(to right top, rgb(121, 121, 121) 33%,  rgb(70, 70, 70, 0.00) 75%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+
+    padding: 20px;
+
+    p {
+        font-family: 'Courier New', Courier, monospace;
+        color: white;
+        font-weight: bold;
+        font-size: larger;
+        margin: 0;
+    }
+    
 }
 
 /* =============================================================================== */

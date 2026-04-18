@@ -5,13 +5,20 @@ export default function NodeControlPanel({
     positionLeft = 50,
     positionTop = 50,
     id = 0,
-    onHoverChange = (id: number, newState: boolean) => {}
+    onHoverChange = (id: number, newState: boolean) => {},
+    onSubscribeToNode = (id: number) => {},
+    onToggleNode = (id: number, newState: boolean) => {}
 }) {
     const [isMouseOver, setMouseOver] = useState(false)
+    const [enabled, setEnabled] = useState(true)
 
     function changeHoverState(newState: boolean) {
         setMouseOver(newState)
         if (onHoverChange) onHoverChange(id, newState)
+    }
+    function changeOnState(newState: boolean) {
+        setEnabled(newState)
+        onToggleNode(id, newState)
     }
 
     return (
@@ -28,13 +35,13 @@ export default function NodeControlPanel({
 
             { !isMouseOver ? (
                 <div id="panel">
-                    <strong id="name"> {nodeName} </strong>
+                    <strong id="name" style={{color:enabled?"black":"grey"}}> {nodeName} </strong>
                 </div>
             ) : (
                 <div id="panel">
-                    <strong id="name"> {nodeName} </strong>
-                    <button id="subscribe-btn"> Subscribe </button>
-                    <button id="off-btn"> Turn off </button>
+                    <p> <strong id="name"> {nodeName} </strong> (id {id})</p>
+                    <button id="subscribe-btn" onClick={() => onSubscribeToNode(id)}> Subscribe </button>
+                    <button id="off-btn" onClick={() => changeOnState(!enabled)}> {enabled ? "Turn off" : "Turn on"} </button>
                 </div>
             )}
         </div>
