@@ -94,7 +94,7 @@ The server when parsing the topology data given in JSON converts it into an arra
 
 I have breifly considered using a routing table for each node but decided for the simplest approach.
 
-For interaction of the `NetworkManager` class with the `RestController` class the first one is defined as a `@Bean` in the Spring App, then a singleton of the class can be passed through the constructor.
+For interaction of the `NetworkManager` class with the `RestApiController` class the first one is defined as a `@Bean` in the Spring App, then a singleton of the class can be passed through the constructor.
 
 ---
 
