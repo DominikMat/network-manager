@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AppConfig {
 
-    /* create depedency for spring boot app */
+    /* create dependency for spring boot app */
     @Bean
     public NetworkManager networkManager() {
         /* create network manager object with topology data from input file*/

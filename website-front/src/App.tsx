@@ -3,6 +3,7 @@ import { useRef, useEffect, Ref, useState } from 'react';
 import NodeControlPanel from './NodeControlPanel';
 import { nodeUIList, topologyData } from './nodesUI';
 import { serverApi } from './serverApiCommunication';
+import { NumericLiteral } from 'typescript';
 
 class ConsoleLine {
     id: string = "";
@@ -42,13 +43,13 @@ function App() {
     }, [])
 
     /* funcin to add/change console line data */
-    function pushLineToConsole(text: string, error: boolean = false, displayTime: number = 15) {
+    function pushLineToConsole(text: string, error: boolean = false, displayTime: number = 1000) {
         const aliveUntil = Date.now() + displayTime * 1000;
         const id = `${Date.now()}-${consoleIdRef.current++}`
         setConsoleContent(prev => [...prev, { id, text, aliveUntil, error }]);
         return id;
     }
-    function replaceConsoleLine(id: string, text: string, error: boolean = false, displayTime: number = 15) {
+    function replaceConsoleLine(id: string, text: string, error: boolean = false, displayTime: number = 1000) {
         const aliveUntil = Date.now() + displayTime * 1000;
         setConsoleContent(prev => prev.map(line => line.id === id ? { ...line, text, error, aliveUntil } : line));
     }
@@ -58,29 +59,38 @@ function App() {
         const nodeName = nodeUIList[nodeIndex].name.toUpperCase();
         const pendingId = pushLineToConsole(`Subscribing to ${nodeName}...`, false, 30);
 
-        // Zamykamy poprzednie połączenie (jeśli chcemy słuchać tylko 1 node'a na raz)
+        // close previous connection
         if (window.currentSse) {
+            pushLineToConsole(`Unsubscribing from previous connection`, false);
             window.currentSse.close();
         }
 
-        // Podłączamy EventSource pod nasz endpoint GET
+        // connect event source to endpoint
         const eventSource = new EventSource(`http://localhost:8080/devices/${nodeIndex}/reachable-devices`);
         window.currentSse = eventSource;
 
-        // Nasłuchiwanie na wiadomości (Spring domyślnie wysyła strumień jako zdarzenie "message")
+        // listen for messages from server
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
+            // Pomocnicza funkcja do formatowania list id
+            const formatNodes = (ids: number[]) => {
+                if (!ids || ids.length === 0) return "none";
+                return ids
+                    .map(id => `${nodeUIList[id].name.toUpperCase()}(id ${id})`)
+                    .join(', ');
+            };
+
             if (data.type === 'INITIAL_STATE') {
-                replaceConsoleLine(pendingId, `Subscribed to: ${nodeName}. Reachable devices IDs: [${data.deviceIds.join(', ')}]`, false);
+                replaceConsoleLine(pendingId, `Subscribed to: ${nodeName}. Reachable devices: [${formatNodes(data.deviceIds)}]`, false );
             } else if (data.type === 'ADDED') {
-                pushLineToConsole(`[${nodeName}] Node reachable: ${nodeUIList[data.deviceId].name.toUpperCase()} (${data.deviceId})`, false, 15);
+                pushLineToConsole( `[${nodeName}] Nodes now reachable: [${formatNodes(data.deviceIds)}]`, false );
             } else if (data.type === 'REMOVED') {
-                pushLineToConsole(`[${nodeName}] Node unreachable: ${nodeUIList[data.deviceId].name.toUpperCase()} (${data.deviceId})`, true, 15);
+                pushLineToConsole(`[${nodeName}] Nodes now unreachable: [${formatNodes(data.deviceIds)}]`, true );
             }
         };
 
-        // Obsługa błędów połączenia strumienia
+        // handle stream errors
         eventSource.onerror = (error) => {
             replaceConsoleLine(pendingId, `SSE Error when subscribing to ${nodeName}.`, true);
             eventSource.close();
@@ -164,7 +174,7 @@ function App() {
             {/* Console Display */}
             <div className='console'>
                 { consoleContent.map( (line) =>
-                <p key={line.id} style={{color:line.error?"red":"white"}}> {line.text} </p>
+                <p key={line.id} style={{color:line.error?"red":"black"}}> {line.text} </p>
                 )}
             </div>
 

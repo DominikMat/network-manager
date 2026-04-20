@@ -3,7 +3,7 @@ package com.server;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import java.io.IOException;
+
 import java.util.Map;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -23,8 +23,10 @@ public class RestApiController {
     }
 
     @GetMapping(path = "/devices/{id}/reachable-devices")
-    public Flux<ServerSentEvent<String>> streamReachableDevices(@PathVariable int id) throws IOException {
-        if ( !networkManager.subscribeToDevice(id) ) return null; // dont return if we already subscribed (if not we subscribe)
-        return networkManager.generateInitialStateEvent(id);
+    public Flux<ServerSentEvent<NetworkManager.NodeUpdateEvent>> streamReachableDevices(@PathVariable int id) {
+        return networkManager.createSubscription(id)
+            .map(event -> ServerSentEvent.<NetworkManager.NodeUpdateEvent>builder()
+            .data(event)
+            .build());
     }
 }

@@ -2,9 +2,8 @@ package com.server;
 
 import com.server.TopologyStructure.NetworkNode;
 import com.server.TopologyStructure.Topology;
-import org.springframework.http.codec.ServerSentEvent;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,7 +14,7 @@ public class NetworkManager {
     private NetworkNode[] networkNodes;
     private Map<Integer, Set<Integer>> reachableNodesFromId;
     List<Integer> subscribedIds = new ArrayList<>();
-    private final Map<Integer, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final Map<Integer, Sinks.Many<NodeUpdateEvent>> sinks = new ConcurrentHashMap<>();
 
     public NetworkManager(Topology networkTopology) {
         initializeNetworkNodesBasedOnTopology(networkTopology);
@@ -23,8 +22,6 @@ public class NetworkManager {
         System.out.println("Initialized with network topology");
         for (int i=0; i<networkNodes.length; i++) {
             System.out.println(networkNodes[i].id + ": " + networkNodes[i].name);
-            System.out.println("  Connected to: [" + Arrays.toString(networkNodes[i].neighborIds.toArray()) + "]");
-            System.out.println("  Computed reachables num: " + this.reachableNodesFromId.get(i).size());
         }
     }
 
@@ -47,24 +44,47 @@ public class NetworkManager {
 
         /* Initial computation of reachable nodes from all positions */
         this.reachableNodesFromId = new HashMap<>();
-        for (var device : networkTopology.devices) {
-            reachableNodesFromId.put(device.id, findReachableNodes(device.id));
-        }
     }
 
     /* Network calculations */
-    public Set<Integer> findReachableNodes(int startId) {
+    public void onUpdateNetworkStructure() {
+        System.out.println("Updating network structure");
+
+        // go thru subscribed IDs and calculate reachable nodes - check for differences with cached nodes
+        for (int subscribedId : this.subscribedIds) {
+            // get reachable nodes before and now
+            Set<Integer> oldState = this.reachableNodesFromId.get(subscribedId);
+            Set<Integer> newState = findReachableNodes(subscribedId);
+
+            // calculate the change in nodes, send update event
+            Set<Integer> added = new HashSet<>(newState);
+            added.removeAll(oldState);
+            Set<Integer> removed = new HashSet<>(oldState);
+            removed.removeAll(newState);
+
+            if (!added.isEmpty() || !removed.isEmpty()) { // if there is change
+                sendEvents(subscribedId, added, removed);
+                this.reachableNodesFromId.replace(subscribedId,newState); // update cache
+            }
+        }
+    }
+    public Set<Integer> findReachableNodes(int startId) { // simple bfs implementation (adapted from https://www.javaspring.net/blog/bfs-search-java/ )
         NetworkNode startNode = networkNodes[startId];
         if (startNode == null || !startNode.active) return Collections.emptySet();
 
         Set<Integer> reachable = new HashSet<>();
-        Queue<Integer> queue = new LinkedList<>();
+        boolean[] visited = new boolean[this.networkSize];
+        LinkedList<Integer> queue = new LinkedList<>();
+
+        visited[startId] = true;
         queue.add(startId);
 
         while (!queue.isEmpty()) {
             int currentId = queue.poll();
+
             for (int neighborId : networkNodes[currentId].neighborIds) {
-                if (networkNodes[neighborId].active && !reachable.contains(neighborId) && neighborId != startId) {
+                if (networkNodes[neighborId].active && !visited[neighborId]) {
+                    visited[neighborId] = true;
                     reachable.add(neighborId);
                     queue.add(neighborId);
                 }
@@ -76,41 +96,48 @@ public class NetworkManager {
     }
 
     /* Event Mangement */
-    public void onUpdateNetworkStructure() {
-        System.out.println("Updating network structure");
-        for (int subscribedId : this.subscribedIds) {
-            Set<Integer> oldState = this.reachableNodesFromId.get(subscribedId);
-            Set<Integer> newState = findReachableNodes(subscribedId);
+    public record NodeUpdateEvent(String type, Set<Integer> deviceIds) {}
+    private void sendEvents(int subscribedId, Set<Integer> added, Set<Integer> removed) {
+        Sinks.Many<NodeUpdateEvent> sink = sinks.get(subscribedId);
+        if (sink == null) return;
+        System.out.println("Sending User Update event for node: " + this.networkNodes[subscribedId].name + " id=" + subscribedId);
 
-            Set<Integer> added = new HashSet<>(newState);
-            added.removeAll(oldState);
+        // added nodes event
+        if (added != null && !added.isEmpty()) {
+            sink.tryEmitNext(new NodeUpdateEvent("ADDED", added));
+            System.out.println("  Added " + added.size() + " nodes");
+        } else System.out.println("  Added 0 nodes");
 
-            Set<Integer> removed = new HashSet<>(oldState);
-            removed.removeAll(newState);
-
-            if (!added.isEmpty() || !removed.isEmpty()) {
-                sendEvents(subscribedId, added, removed);
-                this.reachableNodesFromId.replace(subscribedId,newState);
-            }
-        }
+        // removed nodes event
+        if (removed != null && !removed.isEmpty()) {
+            sink.tryEmitNext(new NodeUpdateEvent("REMOVED", removed));
+            System.out.println("  Removed " + removed.size() + " nodes");
+        } else System.out.println("  Removed 0 nodes");
     }
-    private void sendEvents() {
+    public Flux<NodeUpdateEvent> createSubscription(int id) {
+        if ( !validDeviceId(id) || this.subscribedIds.contains(id)) return Flux.empty();
 
+        // add to subs and compute reachables
+        this.subscribedIds.add(id);
+        Set<Integer> reachableFromID = findReachableNodes(id);
+        this.reachableNodesFromId.put(id, reachableFromID);
+        System.out.println("Subscribed to event stream from node " + this.networkNodes[id].name + " id=" + id);
+
+        // create Flux sink
+        Sinks.Many<NodeUpdateEvent> sink = sinks.computeIfAbsent(id,
+            k -> Sinks.many().multicast().onBackpressureBuffer());
+
+        // send initial state event and return flux
+        var initialStateEvent = new NodeUpdateEvent("INITIAL_STATE", reachableFromID);
+        return Flux.concat( Flux.just(initialStateEvent), sink.asFlux() ); // return initial state event coupled with flux
     }
-    public Flux<ServerSentEvent<String>> generateInitialStateEvent(int id) {
 
-    }
-
-    /* Api Endpoint Implementations */
+    /* Api Endpoint implementation for Turning devices on and off */
     public boolean toggleDeviceState(int id, boolean newState) {
         if ( !validDeviceId(id) || this.networkNodes[id].active == newState) return false;
         this.networkNodes[id].setActive(newState);
+        System.out.println("Toggled node " + this.networkNodes[id].name + " id=" + id + " to state " + (newState ? "ON" : "OFF"));
         onUpdateNetworkStructure();
-        return true;
-    }
-    public boolean subscribeToDevice(int id) {
-        if ( !validDeviceId(id) || this.subscribedIds.contains(id)) return false;
-        this.subscribedIds.add(id);
         return true;
     }
 
