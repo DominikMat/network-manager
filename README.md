@@ -102,6 +102,46 @@ this project was written as a recruitment assignment for Hitachi Energy. (hopefu
 
 ---
 
-## Unit test
+## Unit tests
 
 A couple of unit test have been written for the `NetworkManager` class and the `FileInputParser` class (2 each).
+
+---
+
+# How to run the App
+
+To run this project locally, you will need two terminal windows: one for the Spring Boot backend and another for the React frontend.
+
+**Prerequisites**: Java 17 (or higher), Node.js (v16 or higher) and npm, Git
+
+## Steps
+1. Clone the repo
+```bash
+git clone https://github.com/DominikMat/network-manager.git
+```
+
+3. **Backend Setup (Spring Boot)**
+The backend is a standard Spring Boot application managed by Maven. It runs on `http://localhost:8080` by default.
+
+```bash
+cd server-back
+```
+
+On Windows:
+ ```bash
+ mvnw.cmd spring-boot:run
+ ```
+
+On macOS/Linux:
+ ```bash
+ ./mvnw spring-boot:run
+ ```
+
+3. **Frontend Setup (React)**
+Open another terminal in the workspace folder
+
+```bash
+cd website-front
+npm install
+npm start
+```
