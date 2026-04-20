@@ -2,12 +2,12 @@ package com.server;
 
 import com.server.TopologyStructure.NetworkNode;
 import com.server.TopologyStructure.Topology;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class NetworkManager {
 
@@ -94,49 +94,11 @@ public class NetworkManager {
             }
         }
     }
-    public record NetworkEvent(String type, Object data) {}
-    private void sendEvents(int subscribedId, Set<Integer> added, Set<Integer> removed) {
-        List<SseEmitter> nodeEmitters = emitters.get(subscribedId);
-        if (nodeEmitters == null) return;
+    private void sendEvents() {
 
-        List<SseEmitter> deadEmitters = new ArrayList<>();
-        for (SseEmitter emitter : nodeEmitters) {
-            try {
-                for (Integer id : added) {
-                    emitter.send(SseEmitter.event().data(Map.of("type", "ADDED", "deviceId", id)));
-                }
-                for (Integer id : removed) {
-                    emitter.send(SseEmitter.event().data(Map.of("type", "REMOVED", "deviceId", id)));
-                }
-            } catch (IOException e) {
-                deadEmitters.add(emitter);
-            }
-        }
-        nodeEmitters.removeAll(deadEmitters);
     }
-    public SseEmitter generateInitialStateEvent(int id) {
-        if (!validDeviceId(id)) return null;
+    public Flux<ServerSentEvent<String>> generateInitialStateEvent(int id) {
 
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        this.emitters.computeIfAbsent(id, k -> new CopyOnWriteArrayList<>()).add(emitter);
-
-        try {
-            Set<Integer> initialNodes = findReachableNodes(id);
-            Map<String, Object> event = Map.of(
-                    "type", "INITIAL_STATE",
-                    "deviceIds", initialNodes
-            );
-            emitter.send(SseEmitter.event().data(event));
-            this.reachableNodesFromId.put(id, initialNodes);
-
-        } catch (IOException e) {
-            emitter.complete();
-        }
-
-        emitter.onCompletion(() -> emitters.get(id).remove(emitter));
-        emitter.onTimeout(() -> emitters.get(id).remove(emitter));
-
-        return emitter;
     }
 
     /* Api Endpoint Implementations */

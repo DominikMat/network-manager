@@ -1,11 +1,10 @@
 package com.server;
 
-import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
+import reactor.core.publisher.Flux;
+import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -24,8 +23,8 @@ public class RestApiController {
     }
 
     @GetMapping(path = "/devices/{id}/reachable-devices")
-    public SseEmitter streamReachableDevices(@PathVariable int id) {
-        if ( !networkManager.subscribeToDevice(id) ) return null; // dont return if we already subscribed (else we do)
+    public Flux<ServerSentEvent<String>> streamReachableDevices(@PathVariable int id) throws IOException {
+        if ( !networkManager.subscribeToDevice(id) ) return null; // dont return if we already subscribed (if not we subscribe)
         return networkManager.generateInitialStateEvent(id);
     }
 }
