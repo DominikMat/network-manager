@@ -20,8 +20,8 @@ public class NetworkManager {
         initializeNetworkNodesBasedOnTopology(networkTopology);
 
         System.out.println("Initialized with network topology");
-        for (int i=0; i<networkNodes.length; i++) {
-            System.out.println(networkNodes[i].id + ": " + networkNodes[i].name);
+        for (NetworkNode networkNode : networkNodes) {
+            System.out.println(networkNode.id + ": " + networkNode.name);
         }
     }
 
@@ -115,7 +115,7 @@ public class NetworkManager {
         } else System.out.println("  Removed 0 nodes");
     }
     public Flux<NodeUpdateEvent> createSubscription(int id) {
-        if ( !validDeviceId(id) || this.subscribedIds.contains(id)) return Flux.empty();
+        if ( isInvalidDeviceId(id) || this.subscribedIds.contains(id)) return Flux.empty();
 
         // add to subs and compute reachables
         this.subscribedIds.add(id);
@@ -134,7 +134,7 @@ public class NetworkManager {
 
     /* Api Endpoint implementation for Turning devices on and off */
     public boolean toggleDeviceState(int id, boolean newState) {
-        if ( !validDeviceId(id) || this.networkNodes[id].active == newState) return false;
+        if ( isInvalidDeviceId(id) || this.networkNodes[id].active == newState) return false;
         this.networkNodes[id].setActive(newState);
         System.out.println("Toggled node " + this.networkNodes[id].name + " id=" + id + " to state " + (newState ? "ON" : "OFF"));
         onUpdateNetworkStructure();
@@ -142,11 +142,11 @@ public class NetworkManager {
     }
 
     /* Helper function to validate ids of network devices */
-    private boolean validDeviceId(int id) {
+    private boolean isInvalidDeviceId(int id) {
         if (id < 0 || id >= this.networkSize || this.networkNodes[id] == null) {
             System.err.println("Cannot turn off device! Invalid id: " + id);
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 }

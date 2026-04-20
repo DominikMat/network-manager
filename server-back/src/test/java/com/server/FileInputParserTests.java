@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FileInputParserTests {
 
     @TempDir
-    Path tempDir; // temprary folder
+    Path tempDir; // temporary folder
 
     @Test
     void shouldParseValidJsonFile() throws Exception {

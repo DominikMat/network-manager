@@ -99,3 +99,9 @@ For interaction of the `NetworkManager` class with the `RestController` class th
 ---
 
 this project was written as a recruitment assignment for Hitachi Energy. (hopefully updates to follow)
+
+---
+
+## Unit test
+
+A couple of unit test have been written for the `NetworkManager` class and the `FileInputParser` class (2 each).
