@@ -115,10 +115,15 @@ public class NetworkManager {
         } else System.out.println("  Removed 0 nodes");
     }
     public Flux<NodeUpdateEvent> createSubscription(int id) {
-        if ( isInvalidDeviceId(id) || this.subscribedIds.contains(id)) return Flux.empty();
+        if ( isInvalidDeviceId(id)) return Flux.empty();
+
+        // check if we have subbed in the past (if so remove old sink)
+        if ( this.sinks.containsKey(id)) this.sinks.remove(id);
+
+        // add id to subscription list
+        if ( !this.subscribedIds.contains(id) ) this.subscribedIds.add(id);
 
         // add to subs and compute reachables
-        this.subscribedIds.add(id);
         Set<Integer> reachableFromID = findReachableNodes(id);
         this.reachableNodesFromId.put(id, reachableFromID);
         System.out.println("Subscribed to event stream from node " + this.networkNodes[id].name + " id=" + id);

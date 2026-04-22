@@ -21,6 +21,7 @@ declare global {
 function App() {
     const [currentNodeSelected, setNodeSelected] = useState(-1)
     const [consoleContent, setConsoleContent] = useState<Array<ConsoleLine>>([])
+    const [currentSubscriptionId, setCurrentSubscriptionId] = useState(-1)
     const [nodeActiveStates, setNodeActiveStates] = useState<boolean[]>(
         topologyData.devices.map(device => device.active)
     )
@@ -43,29 +44,41 @@ function App() {
     }, [])
 
     /* funcin to add/change console line data */
-    function pushLineToConsole(text: string, error: boolean = false, displayTime: number = 1000) {
+    function pushLineToConsole(text: string, error: boolean = false, displayTime: number = 30) {
         const aliveUntil = Date.now() + displayTime * 1000;
         const id = `${Date.now()}-${consoleIdRef.current++}`
         setConsoleContent(prev => [...prev, { id, text, aliveUntil, error }]);
         return id;
     }
-    function replaceConsoleLine(id: string, text: string, error: boolean = false, displayTime: number = 1000) {
+    function replaceConsoleLine(id: string, text: string, error: boolean = false, displayTime: number = 30) {
         const aliveUntil = Date.now() + displayTime * 1000;
         setConsoleContent(prev => prev.map(line => line.id === id ? { ...line, text, error, aliveUntil } : line));
     }
 
     /* Button handlers */
-    async function onSubscribeButtonPressed(nodeIndex: number) {
+    async function onSubscribeButtonPressed(nodeIndex: number, state: boolean) { // state true = subscribe, false = unsubscribe 
+        if (nodeIndex < 0 || nodeIndex >= nodeUIList.length) return;
+
         const nodeName = nodeUIList[nodeIndex].name.toUpperCase();
-        const pendingId = pushLineToConsole(`Subscribing to ${nodeName}...`, false, 30);
+        const pendingId = pushLineToConsole(`Subscribing to ${nodeName}`, false, 30);
+        setCurrentSubscriptionId(nodeIndex)
+
+        // if unsubscribing
+        if (!state && nodeIndex == currentSubscriptionId && window.currentSse) {
+            pushLineToConsole(`Unsubscribing from ${nodeName} (id ${nodeIndex})`, true);
+            setCurrentSubscriptionId(-1)
+            window.currentSse.close();
+        } 
+        if (!state) return; // we can only unsubscribe if above conditoin is met, below is subscription logic
 
         // close previous connection
-        if (window.currentSse) {
-            pushLineToConsole(`Unsubscribing from previous connection`, false);
+        if (window.currentSse && currentSubscriptionId != -1) {
+            pushLineToConsole(`Unsubscribing from previous connection with ${nodeUIList[currentSubscriptionId].name.toUpperCase()} (id ${currentSubscriptionId})`, true);
             window.currentSse.close();
         }
 
         // connect event source to endpoint
+        setCurrentSubscriptionId( nodeIndex )
         const eventSource = new EventSource(`http://localhost:8080/devices/${nodeIndex}/reachable-devices`);
         window.currentSse = eventSource;
 
@@ -161,6 +174,7 @@ function App() {
                                 positionLeft={nodeUIData.positionLeft}
                                 positionTop={nodeUIData.positionTop}
                                 id={index}
+                                isSubscribedTo={index == currentSubscriptionId}
                                 onHoverChange={onNodeHoverStateChange}
                                 onSubscribeToNode={onSubscribeButtonPressed}
                                 onToggleNode={onToggleNode}

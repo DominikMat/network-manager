@@ -5,8 +5,9 @@ export default function NodeControlPanel({
     positionLeft = 50,
     positionTop = 50,
     id = 0,
+    isSubscribedTo = false,
     onHoverChange = (id: number, newState: boolean) => {},
-    onSubscribeToNode = (id: number) => {},
+    onSubscribeToNode = (id: number, state: boolean) => {},
     onToggleNode = (id: number, newState: boolean) => {}
 }) {
     const [isMouseOver, setMouseOver] = useState(false)
@@ -40,7 +41,7 @@ export default function NodeControlPanel({
             ) : (
                 <div id="panel">
                     <p> <strong id="name"> {nodeName} </strong> (id {id})</p>
-                    <button id="subscribe-btn" onClick={() => onSubscribeToNode(id)}> Subscribe </button>
+                    <button id="subscribe-btn" onClick={() => onSubscribeToNode(id, !isSubscribedTo)}> { isSubscribedTo ? "Unsubscribe" : "Subscribe" } </button>
                     <button id="off-btn" onClick={() => changeOnState(!enabled)}> {enabled ? "Turn off" : "Turn on"} </button>
                 </div>
             )}

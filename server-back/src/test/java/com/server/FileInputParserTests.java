@@ -17,7 +17,7 @@ class FileInputParserTests {
 
     @Test
     void shouldParseValidJsonFile() throws Exception {
-        // tworzenie przykladowej topologii
+        // tworzenie przykladowej topologi
         File tempFile = tempDir.resolve("test-topology.json").toFile();
         try (FileWriter writer = new FileWriter(tempFile)) {
             writer.write("""
