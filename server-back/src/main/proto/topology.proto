@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.server.grpc";
+option java_outer_classname = "TopologyProto";
+
+/* Service */
+service TopologyService {
+  rpc SubscribeToDevice(SubscribeRequest) returns (stream NetworkEvent);
+  rpc ToggleDevice(ToggleRequest) returns (ToggleResponse);
+}
+
+/* Messages */
+message SubscribeRequest {
+  int32 device_id = 1;
+}
+message NetworkEvent {
+  string type = 1;
+  repeated int32 device_ids = 2;
+}
+message ToggleRequest {
+  int32 device_id = 1;
+  bool active = 2;
+}
+message ToggleResponse {
+  bool success = 1;
+}
