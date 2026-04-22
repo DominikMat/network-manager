@@ -1,0 +1,15 @@
+
+FRONT:
+
+    compile proto files:
+    npx grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src --grpc-web_out=import_style=typescript,mode=grpcwebtext:./src -I ./grpc-proto ./grpc-proto/topology.proto
+
+    run gprc-web envoy:
+    docker-compose up -d
+
+    npm start
+
+
+BACK:
+
+    idk w intelliJ sa guziki lol
